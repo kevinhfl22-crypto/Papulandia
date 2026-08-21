@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
     <link rel="stylesheet" href="papulandia.css">
     <meta charset="UTF-8">
@@ -7,6 +7,119 @@
     <title>Papulandia</title>
 </head>
 <body>
-    <h1>BIENVENIDO PAPU</h1>
+
+    <div class="estrellas">
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+    </div>
+
+    <header class="topbar">
+        <h1 class="titulo-app">Bienvenido papu</h1>
+
+        <button id="btn-menu" class="btn-menu" aria-label="Abrir menú">
+            <span></span>
+            <span></span>
+            <span></span>
+        </button>
+    </header>
+
+    <div id="overlay-menu" class="overlay-menu"></div>
+
+    <nav id="menu-lateral" class="menu-lateral">
+        <button id="btn-cerrar-menu" class="btn-cerrar-menu" aria-label="Cerrar menú">✕</button>
+        <ul class="lista-menu">
+            <li><button class="menu-item activo" data-seccion="inicio">✨ Inicio</button></li>
+            <li><button class="menu-item" data-seccion="cocina">🍳 Cocina</button></li>
+            <li><button class="menu-item" data-seccion="musica">🎵 Música</button></li>
+            <li><button class="menu-item" data-seccion="anime">🎌 Anime</button></li>
+            <li><button class="menu-item" data-seccion="artistas">🎤 Artistas</button></li>
+        </ul>
+    </nav>
+
+    <main class="contenido">
+
+        <section id="seccion-inicio" class="seccion activa">
+            <p class="mensaje-inicio">Elige una sección del menú para empezar a explorar, papu ✨</p>
+        </section>
+
+        <section id="seccion-cocina" class="seccion" data-nombre="cocina" data-corazon="no">
+            <h2 class="titulo-seccion">🍳 Cocina</h2>
+
+            <div class="feed"></div>
+
+            <div class="crear-post">
+                <textarea class="input-post" placeholder="Comparte una receta, un tip de cocina, o lo que sea papu..."></textarea>
+                <div class="acciones-post">
+                    <label class="btn-subir-imagen" title="Subir imagen">
+                        +
+                        <input type="file" accept="image/*" class="input-imagen" hidden>
+                    </label>
+                    <img class="preview-imagen" hidden>
+                    <button class="btn-enviar-post" title="Publicar">➤</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="seccion-musica" class="seccion" data-nombre="musica">
+            <h2 class="titulo-seccion">🎵 Música</h2>
+            <p class="subtitulo-seccion">Elige una canción — seguirá sonando aunque cambies de sección</p>
+            <ul class="lista-canciones"></ul>
+        </section>
+
+        <section id="seccion-anime" class="seccion" data-nombre="anime" data-corazon="si">
+            <h2 class="titulo-seccion">🎌 Anime</h2>
+
+            <div class="feed"></div>
+
+            <div class="crear-post">
+                <textarea class="input-post" placeholder="Sube una imagen de anime o comenta algo papu..."></textarea>
+                <div class="acciones-post">
+                    <label class="btn-subir-imagen" title="Subir imagen">
+                        +
+                        <input type="file" accept="image/*" class="input-imagen" hidden>
+                    </label>
+                    <img class="preview-imagen" hidden>
+                    <button class="btn-enviar-post" title="Publicar">➤</button>
+                </div>
+            </div>
+        </section>
+
+        <section id="seccion-artistas" class="seccion" data-nombre="artistas" data-corazon="no">
+            <h2 class="titulo-seccion">🎤 Artistas</h2>
+
+            <div class="feed"></div>
+
+            <div class="crear-post">
+                <textarea class="input-post" placeholder="Comenta o sube una foto de tu artista favorito..."></textarea>
+                <div class="acciones-post">
+                    <label class="btn-subir-imagen" title="Subir imagen">
+                        +
+                        <input type="file" accept="image/*" class="input-imagen" hidden>
+                    </label>
+                    <img class="preview-imagen" hidden>
+                    <button class="btn-enviar-post" title="Publicar">➤</button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <div id="reproductor-flotante" class="reproductor-flotante" hidden>
+        <span class="rf-nota">🎵</span>
+        <span class="rf-nombre">—</span>
+        <button id="rf-play-pause" class="rf-play-pause">⏸</button>
+    </div>
+
+    <audio id="audio-musica" loop></audio>
+
+    <script type="module" src="proteger.js"></script>
+
+    <script src="comunidad.js"></script>
 </body>
 </html>

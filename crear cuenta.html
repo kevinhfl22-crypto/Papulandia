@@ -1,18 +1,82 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 <head>
+    <link rel="stylesheet" href="crearcuenta.css">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>Crear cuenta — Papulandia</title>
 </head>
 <body>
-    <form action="">
-        <input type="text" placeholder="Escribe tu nombre rial" name="name" required>
-        <input type="text" placeholder="Crea un nombre de usuario inzano" name="usuario" required>
-        <input type="email" placeholder="Escribe tu correo electronico" name="email" required>
-        <input type="date"  name="date required">
-        <input type="password" placeholder="Crea una contraseña inzana" name="password" required>
-        <input type="submit">
-    </form>
+
+    <div class="estrellas">
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+        <div class="estrella"></div>
+    </div>
+
+    <div class="login-wrapper">
+        <form class="login-card" action="">
+            <div class="login-icono">
+                <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="1.6">
+                    <circle cx="12" cy="8" r="4"/>
+                    <path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+                    <path d="M19 8v4M17 10h4" stroke-linecap="round"/>
+                </svg>
+            </div>
+
+            <h2 class="login-titulo">Crea tu cuenta</h2>
+
+            <div class="campo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <circle cx="12" cy="8" r="3.2"/>
+                    <path d="M5 20c0-3.5 3.1-6 7-6s7 2.5 7 6"/>
+                </svg>
+                <input type="text" placeholder="Escribe tu nombre rial" name="name" required>
+            </div>
+
+            <div class="campo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <path d="M12 15c3.5 0 6-1 6-3.5S15.5 3 12 3 6 6 6 11.5 8.5 15 12 15z"/>
+                    <path d="M9 12l1.5 1.5L15 9"/>
+                </svg>
+                <input type="text" placeholder="Crea un nombre de usuario inzano" name="usuario" required>
+            </div>
+
+            <div class="campo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="3" y="6" width="18" height="13" rx="2"/>
+                    <path d="M3 7l9 6 9-6"/>
+                </svg>
+                <input type="email" placeholder="Escribe tu correo electronico" name="email" required>
+            </div>
+
+            <div class="campo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="3" y="5" width="18" height="16" rx="2"/>
+                    <path d="M3 10h18M8 3v4M16 3v4" stroke-linecap="round"/>
+                </svg>
+                <input type="date" name="date" required>
+            </div>
+
+            <div class="campo">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6">
+                    <rect x="4" y="10" width="16" height="10" rx="2"/>
+                    <path d="M8 10V7a4 4 0 018 0v3"/>
+                </svg>
+                <input type="password" placeholder="Crea una contraseña inzana" name="password" required>
+            </div>
+
+            <input type="submit" value="Crear cuenta" class="boton-login">
+        </form>
+    </div>
+
+    <script type="module" src="registro.js"></script>
+
 </body>
 </html>
+
