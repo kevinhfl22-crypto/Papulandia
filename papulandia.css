@@ -345,6 +345,13 @@ body {
     animation: aparecer 0.4s ease;
 }
 
+.post-autor {
+    color: #c084fc;
+    font-size: 13px;
+    font-weight: 700;
+    margin: 0 0 8px;
+}
+
 .post-texto {
     color: #e9e4ff;
     font-size: 15px;

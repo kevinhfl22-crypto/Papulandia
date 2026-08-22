@@ -1,3 +1,31 @@
+import { auth, db } from "./firebase-config.js";
+import { onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import {
+    collection, addDoc, doc, getDoc, updateDoc,
+    onSnapshot, query, where, orderBy, serverTimestamp,
+    arrayUnion, arrayRemove
+} from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+
+/* =========================================================
+   USUARIO ACTUAL
+   ========================================================= */
+let usuarioActual = null;
+let nombreUsuarioActual = 'Papu';
+
+onAuthStateChanged(auth, async (user) => {
+    usuarioActual = user;
+    if (user) {
+        try {
+            const snap = await getDoc(doc(db, 'usuarios', user.uid));
+            if (snap.exists()) {
+                nombreUsuarioActual = snap.data().usuario || snap.data().nombre || 'Papu';
+            }
+        } catch (err) {
+            console.error('No se pudo leer el perfil del usuario:', err);
+        }
+    }
+});
+
 /* =========================================================
    MENÚ HAMBURGUESA
    ========================================================= */
@@ -43,38 +71,30 @@ botonesMenu.forEach((btn) => {
 });
 
 /* =========================================================
-   PUBLICACIONES (localStorage) — cocina, anime, artistas
+   PUBLICACIONES COMPARTIDAS (Firestore + Storage)
    ========================================================= */
 const SECCIONES_CON_POSTS = ['cocina', 'anime', 'artistas'];
-
-function claveStorage(seccion) {
-    return 'papulandia_posts_' + seccion;
-}
-
-function obtenerPosts(seccion) {
-    const datos = localStorage.getItem(claveStorage(seccion));
-    return datos ? JSON.parse(datos) : [];
-}
-
-function guardarPosts(seccion, posts) {
-    localStorage.setItem(claveStorage(seccion), JSON.stringify(posts));
-}
+const coleccionPosts = collection(db, 'publicaciones');
 
 function formatearFecha(timestamp) {
-    const fecha = new Date(timestamp);
+    if (!timestamp) return 'enviando...';
+    const fecha = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
     return fecha.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) +
         ' · ' + fecha.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' });
 }
 
-function crearElementoPost(post, seccion, permiteCorazon) {
+function crearElementoPost(post, permiteCorazon) {
     const div = document.createElement('div');
     div.className = 'post';
     div.dataset.id = post.id;
 
-    let html = '';
+    const corazones = post.corazones || [];
+    const yaLeDiCorazon = usuarioActual && corazones.includes(usuarioActual.uid);
+
+    let html = `<p class="post-autor">${post.autorNombre || 'Papu'}</p>`;
 
     if (post.imagen) {
-        html += `<img src="${post.imagen}" class="post-imagen" alt="publicación">`;
+        html += `<img src="${post.imagen}" class="post-imagen" alt="publicación" loading="lazy">`;
     }
 
     if (post.texto) {
@@ -86,11 +106,11 @@ function crearElementoPost(post, seccion, permiteCorazon) {
     html += `<div class="post-acciones">`;
     if (permiteCorazon) {
         html += `
-            <button class="btn-corazon ${post.corazon ? 'activo' : ''}">
-                ${post.corazon ? '❤️' : '🤍'} <span class="conteo">${post.corazon ? 1 : 0}</span>
+            <button class="btn-corazon ${yaLeDiCorazon ? 'activo' : ''}">
+                ${yaLeDiCorazon ? '❤️' : '🤍'} <span class="conteo">${corazones.length}</span>
             </button>`;
     }
-    html += `<button class="btn-toggle-comentarios">💬 ${post.comentarios.length} comentario${post.comentarios.length === 1 ? '' : 's'}</button>`;
+    html += `<button class="btn-toggle-comentarios">💬 comentarios</button>`;
     html += `</div>`;
 
     html += `<div class="zona-comentarios">
@@ -103,59 +123,75 @@ function crearElementoPost(post, seccion, permiteCorazon) {
 
     div.innerHTML = html;
 
-    // texto del post se inserta con textContent para evitar problemas con HTML/XSS
     if (post.texto) {
         div.querySelector('.post-texto').textContent = post.texto;
     }
 
-    const listaComentarios = div.querySelector('.lista-comentarios');
-    post.comentarios.forEach((c) => {
-        const p = document.createElement('p');
-        p.className = 'comentario';
-        p.textContent = c;
-        listaComentarios.appendChild(p);
-    });
-
     // Corazón
     if (permiteCorazon) {
         const btnCorazon = div.querySelector('.btn-corazon');
-        btnCorazon.addEventListener('click', () => {
-            const posts = obtenerPosts(seccion);
-            const p = posts.find((x) => x.id === post.id);
-            p.corazon = !p.corazon;
-            guardarPosts(seccion, posts);
-            btnCorazon.classList.toggle('activo', p.corazon);
-            btnCorazon.innerHTML = `${p.corazon ? '❤️' : '🤍'} <span class="conteo">${p.corazon ? 1 : 0}</span>`;
+        btnCorazon.addEventListener('click', async () => {
+            if (!usuarioActual) return;
+            const postRef = doc(db, 'publicaciones', post.id);
+            try {
+                if (yaLeDiCorazon) {
+                    await updateDoc(postRef, { corazones: arrayRemove(usuarioActual.uid) });
+                } else {
+                    await updateDoc(postRef, { corazones: arrayUnion(usuarioActual.uid) });
+                }
+            } catch (err) {
+                console.error('Error al reaccionar:', err);
+            }
         });
     }
 
-    // Mostrar/ocultar comentarios
+    // Comentarios: escuchamos en tiempo real desde que se crea la tarjeta
+    const listaComentarios = div.querySelector('.lista-comentarios');
     const btnToggle = div.querySelector('.btn-toggle-comentarios');
     const zonaComentarios = div.querySelector('.zona-comentarios');
+
+    const qComentarios = query(
+        collection(db, 'publicaciones', post.id, 'comentarios'),
+        orderBy('fecha', 'asc')
+    );
+
+    onSnapshot(qComentarios, (snap) => {
+        listaComentarios.innerHTML = '';
+        snap.forEach((c) => {
+            const dato = c.data();
+            const p = document.createElement('p');
+            p.className = 'comentario';
+            const strong = document.createElement('strong');
+            strong.textContent = (dato.autorNombre || 'Papu') + ': ';
+            p.appendChild(strong);
+            p.appendChild(document.createTextNode(dato.texto));
+            listaComentarios.appendChild(p);
+        });
+        btnToggle.textContent = `💬 ${snap.size} comentario${snap.size === 1 ? '' : 's'}`;
+    });
+
     btnToggle.addEventListener('click', () => {
         zonaComentarios.classList.toggle('visible');
     });
 
-    // Agregar comentario
     const inputComentario = div.querySelector('.input-comentario');
     const btnEnviarComentario = div.querySelector('.btn-enviar-comentario');
 
-    function enviarComentario() {
+    async function enviarComentario() {
         const texto = inputComentario.value.trim();
-        if (!texto) return;
+        if (!texto || !usuarioActual) return;
 
-        const posts = obtenerPosts(seccion);
-        const p = posts.find((x) => x.id === post.id);
-        p.comentarios.push(texto);
-        guardarPosts(seccion, posts);
-
-        const nuevoComentario = document.createElement('p');
-        nuevoComentario.className = 'comentario';
-        nuevoComentario.textContent = texto;
-        listaComentarios.appendChild(nuevoComentario);
-
-        btnToggle.textContent = `💬 ${p.comentarios.length} comentario${p.comentarios.length === 1 ? '' : 's'}`;
         inputComentario.value = '';
+        try {
+            await addDoc(collection(db, 'publicaciones', post.id, 'comentarios'), {
+                texto: texto,
+                autorUID: usuarioActual.uid,
+                autorNombre: nombreUsuarioActual,
+                fecha: serverTimestamp()
+            });
+        } catch (err) {
+            console.error('Error al comentar:', err);
+        }
     }
 
     btnEnviarComentario.addEventListener('click', enviarComentario);
@@ -166,14 +202,57 @@ function crearElementoPost(post, seccion, permiteCorazon) {
     return div;
 }
 
-function renderizarFeed(seccion) {
+function escucharFeed(seccion) {
     const feed = document.querySelector(`#seccion-${seccion} .feed`);
     const permiteCorazon = document.getElementById('seccion-' + seccion).dataset.corazon === 'si';
-    feed.innerHTML = '';
 
-    const posts = obtenerPosts(seccion).slice().reverse();
-    posts.forEach((post) => {
-        feed.appendChild(crearElementoPost(post, seccion, permiteCorazon));
+    const q = query(
+        coleccionPosts,
+        where('seccion', '==', seccion),
+        orderBy('fecha', 'desc')
+    );
+
+    onSnapshot(q, (snapshot) => {
+        feed.innerHTML = '';
+        snapshot.forEach((docSnap) => {
+            const post = { id: docSnap.id, ...docSnap.data() };
+            feed.appendChild(crearElementoPost(post, permiteCorazon));
+        });
+    }, (error) => {
+        console.error(`Error escuchando la sección ${seccion}:`, error);
+        feed.innerHTML = '<p style="color:#f87171; text-align:center;">No se pudieron cargar las publicaciones. Revisa la consola (F12).</p>';
+    });
+}
+
+/* Comprime y redimensiona la imagen antes de guardarla como base64,
+   para que quepa dentro del límite de 1MB por documento de Firestore */
+function comprimirImagen(archivo, maxDimension = 900, calidad = 0.7) {
+    return new Promise((resolve, reject) => {
+        const lector = new FileReader();
+        lector.onload = (e) => {
+            const img = new Image();
+            img.onload = () => {
+                let { width, height } = img;
+                if (width > maxDimension || height > maxDimension) {
+                    if (width > height) {
+                        height = Math.round(height * (maxDimension / width));
+                        width = maxDimension;
+                    } else {
+                        width = Math.round(width * (maxDimension / height));
+                        height = maxDimension;
+                    }
+                }
+                const canvas = document.createElement('canvas');
+                canvas.width = width;
+                canvas.height = height;
+                canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+                resolve(canvas.toDataURL('image/jpeg', calidad));
+            };
+            img.onerror = reject;
+            img.src = e.target.result;
+        };
+        lector.onerror = reject;
+        lector.readAsDataURL(archivo);
     });
 }
 
@@ -186,54 +265,62 @@ function inicializarCreacionPost(seccion) {
 
     let imagenBase64 = null;
 
-    inputImagen.addEventListener('change', () => {
+    inputImagen.addEventListener('change', async () => {
         const archivo = inputImagen.files[0];
         if (!archivo) return;
 
-        const lector = new FileReader();
-        lector.onload = () => {
-            imagenBase64 = lector.result;
+        try {
+            imagenBase64 = await comprimirImagen(archivo);
             previewImagen.src = imagenBase64;
             previewImagen.hidden = false;
-        };
-        lector.readAsDataURL(archivo);
+        } catch (err) {
+            console.error('Error procesando la imagen:', err);
+        }
     });
 
-    btnEnviarPost.addEventListener('click', () => {
+    btnEnviarPost.addEventListener('click', async () => {
         const texto = inputPost.value.trim();
-
         if (!texto && !imagenBase64) return;
+        if (!usuarioActual) return;
 
-        const posts = obtenerPosts(seccion);
-        posts.push({
-            id: Date.now().toString() + Math.random().toString(36).slice(2),
-            texto: texto,
-            imagen: imagenBase64,
-            corazon: false,
-            comentarios: [],
-            fecha: Date.now()
-        });
-        guardarPosts(seccion, posts);
+        btnEnviarPost.disabled = true;
+        btnEnviarPost.textContent = '⏳';
 
-        inputPost.value = '';
-        inputImagen.value = '';
-        imagenBase64 = null;
-        previewImagen.hidden = true;
+        try {
+            await addDoc(coleccionPosts, {
+                seccion: seccion,
+                texto: texto,
+                imagen: imagenBase64,
+                autorUID: usuarioActual.uid,
+                autorNombre: nombreUsuarioActual,
+                corazones: [],
+                fecha: serverTimestamp()
+            });
 
-        renderizarFeed(seccion);
+            inputPost.value = '';
+            inputImagen.value = '';
+            imagenBase64 = null;
+            previewImagen.hidden = true;
+
+        } catch (err) {
+            console.error('Error al publicar:', err);
+            alert('No se pudo publicar. Revisa la consola (F12) para más detalles.');
+        }
+
+        btnEnviarPost.disabled = false;
+        btnEnviarPost.textContent = '➤';
     });
 }
 
 SECCIONES_CON_POSTS.forEach((seccion) => {
     inicializarCreacionPost(seccion);
-    renderizarFeed(seccion);
+    escucharFeed(seccion);
 });
 
 /* =========================================================
    MÚSICA — sigue sonando aunque cambies de sección
+   (esto se queda local, no compartido entre usuarios)
    ========================================================= */
-
-// 👉 Agrega aquí tus canciones: nombre a mostrar + ruta del archivo en tu carpeta Musica
 const CANCIONES = [
     { nombre: 'Pumped up kicks', archivo: 'Musica/pumped.mp3' },
     { nombre: 'My kind of woman', archivo: 'Musica/woman.mp3' },
@@ -282,7 +369,6 @@ function actualizarEstadoVisualCanciones() {
 
 function reproducirCancion(index) {
     if (cancionActualIndex === index) {
-        // misma canción: toggle play/pausa
         if (audio.paused) {
             audio.play();
         } else {
